@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="5+2减脂">
+<meta name="theme-color" content="#6366f1">
+<title>5+2 智能减脂</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
+  background:#f8f9fb;color:#1e1b4b;max-width:430px;margin:0 auto;
+  padding:env(safe-area-inset-top) 14px 100px;min-height:100vh;min-height:100dvh}
+input,select,button{font-family:inherit;outline:none}
+input[type=number]{-moz-appearance:textfield}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}
+
+.card{border-radius:16px;padding:16px;margin-bottom:14px}
+.lbl{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:5px}
+.inp{width:100%;padding:11px;border-radius:11px;border:1px solid #d1d5db;font-size:15px;background:#fff}
+.btn-primary{width:100%;padding:15px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:17px;font-weight:800;cursor:pointer;letter-spacing:.5px}
+.btn-primary:active{opacity:.85}
+
+.bar-track{height:7px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin-bottom:2px}
+.bar-fill{height:100%;border-radius:4px;transition:width .3s}
+
+.week-btn{flex:1;padding:8px 0;border-radius:11px;border:2px solid transparent;font-size:11px;font-weight:700;cursor:pointer;text-align:center}
+.week-btn.active{border-color:#6366f1}
+
+.food-item{display:flex;align-items:center;padding:10px 8px;border-radius:9px;cursor:pointer;margin-bottom:1px}
+.food-item:active{background:#f3f4f6}
+
+.qty-btn{width:28px;height:28px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.modal-sheet{width:100%;max-width:430px;background:#fff;border-radius:20px 20px 0 0;padding:18px 16px;max-height:82vh;display:flex;flex-direction:column}
+
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #f0f0f0;
+  display:flex;justify-content:center;padding:10px 0;padding-bottom:calc(10px + env(safe-area-inset-bottom));gap:8px;z-index:50}
+
+.macro-tag{text-align:center;border-radius:8px;padding:7px 4px}
+.macro-tag .v{font-size:14px;font-weight:700;margin-top:2px}
+.macro-tag .l{font-size:10px;color:#6b7280}
+
+.cat-btn{padding:4px 10px;border-radius:8px;border:none;font-size:11px;font-weight:600;cursor:pointer}
+
+.tip{font-size:11px;line-height:1.7;color:#92400e}
+
+.fade-in{animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ========== CARB LOOKUP TABLE ==========
+const CT={60:{160:2.6},65:{160:2.6,165:2.6},70:{160:2.5,165:2.5,170:2.6,175:2.7},75:{160:2.4,165:2.5,170:2.5,175:2.6,180:2.7},80:{160:2.4,165:2.4,170:2.5,175:2.5,180:2.6,185:2.6},85:{160:2.3,165:2.4,170:2.4,175:2.5,180:2.5,185:2.6,190:2.6},90:{160:2.3,165:2.3,170:2.4,175:2.4,180:2.5,185:2.5,190:2.6},95:{160:2.2,165:2.3,170:2.3,175:2.4,180:2.4,185:2.5,190:2.5},100:{160:2.2,165:2.2,170:2.3,175:2.3,180:2.4,185:2.4,190:2.5},105:{160:2.1,165:2.2,170:2.2,175:2.3,180:2.3,185:2.4,190:2.4},110:{160:2.1,165:2.2,170:2.2,175:2.2,180:2.3,185:2.3,190:2.4},115:{160:2.1,165:2.1,170:2.2,175:2.2,180:2.2,185:2.3,190:2.3},120:{160:1.9,165:2.0,170:2.0,175:2.1,180:2.1,185:2.1,190:2.2},125:{160:1.9,165:2.0,170:2.0,175:2.0,180:2.1,185:2.1,190:2.1},130:{160:1.9,165:1.9,170:2.0,175:2.0,180:2.0,185:2.1,190:2.1}};
+function lookupCarb(w,h){
+  const ws=Object.keys(CT).map(Number).sort((a,b)=>a-b);
+  const hs=[160,165,170,175,180,185,190];
+  const wk=ws.reduce((p,c)=>Math.abs(c-w)<Math.abs(p-w)?c:p);
+  const hk=hs.reduce((p,c)=>Math.abs(c-h)<Math.abs(p-h)?c:p);
+  return CT[wk]?.[hk]||2.2;
+}
+
+// ========== FOOD DB ==========
+const INIT_FOODS=[
+{cat:"主食",name:"米饭(白)",u:"碗150g",c:39,p:4,f:.5,cal:174},
+{cat:"主食",name:"糙米饭",u:"碗150g",c:34,p:4.5,f:1.2,cal:166},
+{cat:"主食",name:"面条(煮)",u:"碗200g",c:50,p:8,f:1,cal:242},
+{cat:"主食",name:"全麦面包",u:"片40g",c:17,p:4.8,f:1.2,cal:92},
+{cat:"主食",name:"红薯(蒸)",u:"个200g",c:42,p:2.6,f:.4,cal:182},
+{cat:"主食",name:"燕麦片",u:"份40g",c:26,p:5.2,f:2.8,cal:152},
+{cat:"主食",name:"土豆(蒸)",u:"个200g",c:34,p:4,f:.2,cal:154},
+{cat:"主食",name:"玉米",u:"根200g",c:40,p:5.4,f:2,cal:196},
+{cat:"主食",name:"馒头",u:"个80g",c:38,p:5.6,f:.8,cal:182},
+{cat:"主食",name:"意面(煮)",u:"份200g",c:56,p:10,f:2,cal:280},
+{cat:"主食",name:"饺子(猪肉)",u:"10个200g",c:42,p:14,f:10,cal:312},
+{cat:"主食",name:"牛肉面",u:"碗400g",c:58,p:18,f:8,cal:380},
+{cat:"蛋白质",name:"鸡胸肉",u:"块100g",c:1,p:24,f:2,cal:118},
+{cat:"蛋白质",name:"牛腱子肉",u:"份100g",c:0,p:22,f:4,cal:124},
+{cat:"蛋白质",name:"猪里脊",u:"份100g",c:0,p:20,f:7,cal:143},
+{cat:"蛋白质",name:"三文鱼",u:"份100g",c:0,p:20,f:10,cal:170},
+{cat:"蛋白质",name:"虾仁",u:"份100g",c:1,p:19,f:1,cal:87},
+{cat:"蛋白质",name:"鸡蛋(水煮)",u:"个50g",c:.5,p:6.5,f:5,cal:72},
+{cat:"蛋白质",name:"豆腐(老)",u:"块150g",c:3,p:12,f:6,cal:114},
+{cat:"蛋白质",name:"蛋白粉",u:"勺30g",c:2,p:24,f:1,cal:113},
+{cat:"蛋白质",name:"牛奶(全脂)",u:"杯250ml",c:12,p:8,f:8,cal:155},
+{cat:"蛋白质",name:"酸奶(无糖)",u:"杯200g",c:10,p:7,f:6,cal:124},
+{cat:"蛋白质",name:"炒鸡蛋",u:"份2个",c:1,p:13,f:14,cal:180},
+{cat:"蔬菜",name:"西兰花",u:"份150g",c:5,p:4.5,f:.5,cal:42},
+{cat:"蔬菜",name:"菠菜(补镁钾⭐)",u:"份150g",c:4,p:4,f:.5,cal:36},
+{cat:"蔬菜",name:"生菜",u:"份100g",c:2.5,p:1.5,f:.3,cal:16},
+{cat:"蔬菜",name:"黄瓜",u:"根200g",c:4,p:1.4,f:.2,cal:24},
+{cat:"蔬菜",name:"番茄",u:"个150g",c:5,p:1.2,f:.3,cal:27},
+{cat:"蔬菜",name:"芹菜",u:"份150g",c:3,p:1.2,f:.2,cal:18},
+{cat:"水果",name:"苹果",u:"个200g",c:26,p:.5,f:.3,cal:104},
+{cat:"水果",name:"香蕉",u:"根120g",c:26,p:1.5,f:.3,cal:107},
+{cat:"水果",name:"蓝莓",u:"份100g",c:14,p:.7,f:.3,cal:57},
+{cat:"水果",name:"橙子",u:"个200g",c:20,p:1.4,f:.2,cal:86},
+{cat:"油脂",name:"牛油果",u:"半个80g",c:2,p:1.6,f:12,cal:128},
+{cat:"油脂",name:"花生酱",u:"勺15g",c:3,p:4,f:8,cal:94},
+{cat:"油脂",name:"杏仁",u:"把20g",c:2,p:4.2,f:10,cal:116},
+{cat:"油脂",name:"橄榄油",u:"勺10ml",c:0,p:0,f:10,cal:90},
+{cat:"饮品",name:"黑咖啡(断食推荐)",u:"杯250ml",c:0,p:.3,f:0,cal:2},
+{cat:"补剂",name:"镁片(断食补充)",u:"片",c:0,p:0,f:0,cal:0},
+];
+
+const DAYS=["周一","周二","周三","周四","周五","周六","周日"];
+const ACT={sedentary:["久坐(×1.2)",1.2],split3:["三分化(×1.3)",1.3],freq5:["五次(×1.5)",1.5],freq7:["七次(×1.7)",1.7]};
+const CATS=["全部","主食","蛋白质","蔬菜","水果","油脂","饮品","补剂","AI"];
+
+// ========== STATE ==========
+let state = loadState() || {
+  page:"setup",
+  prof:{weight:90,height:180,bodyFat:20,activity:"split3",fastDays:[5,6],apiKey:""},
+  foods:[...INIT_FOODS],
+  weekLog:[[],[],[],[],[],[],[]],
+  selDay:new Date().getDay()===0?6:new Date().getDay()-1,
+  showAdd:false, q:"", catFilter:"全部",
+  aiQuery:"", aiLoading:false, aiResult:null, aiError:""
+};
+
+function loadState(){
+  try{const s=localStorage.getItem("d52");return s?JSON.parse(s):null}catch(e){return null}
+}
+function saveState(){
+  try{const s={...state,showAdd:false,aiLoading:false,aiResult:null,aiError:""};
+    localStorage.setItem("d52",JSON.stringify(s))}catch(e){}
+}
+
+function S(updates){Object.assign(state,updates);render();saveState()}
+
+// ========== CALCULATIONS ==========
+function calc(){
+  const p=state.prof;
+  const lean=p.weight*(1-p.bodyFat/100);
+  const rmr=25.2*p.weight;
+  const tdee=Math.round(rmr*ACT[p.activity][1]);
+  const minCal=Math.round(lean*30);
+  const cpk=lookupCarb(p.weight,p.height);
+  const isFast=p.fastDays.includes(state.selDay);
+  let targets;
+  if(isFast){
+    const pg=Math.round(p.weight*1.6);
+    const remain=Math.max(0,900-pg*4);
+    targets={cal:900,c:Math.round(remain*.3/4),p:pg,f:Math.round(remain*.7/9),type:"断食日"};
+  }else{
+    const cg=Math.round(p.weight*cpk),pg=Math.round(p.weight*1.8),fg=Math.round(p.weight*.5);
+    const tot=cg*4+pg*4+fg*9;
+    targets={cal:Math.max(tot,tdee,minCal),c:cg,p:pg,f:fg,type:"正常日"};
+  }
+  const meals=state.weekLog[state.selDay]||[];
+  const actual=meals.reduce((a,m)=>({cal:a.cal+m.cal*m.qty,c:a.c+m.c*m.qty,p:a.p+m.p*m.qty,f:a.f+m.f*m.qty}),{cal:0,c:0,p:0,f:0});
+  return {lean,rmr,tdee,minCal,cpk,isFast,targets,actual};
+}
+
+// ========== DeepSeek AI ==========
+async function askAI(){
+  if(!state.aiQuery.trim())return;
+  if(!state.prof.apiKey){S({aiError:"请先在设置页填写DeepSeek API Key"});return}
+  S({aiLoading:true,aiError:"",aiResult:null});
+  try{
+    const r=await fetch("https://api.deepseek.com/chat/completions",{
+      method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+state.prof.apiKey},
+      body:JSON.stringify({model:"deepseek-chat",temperature:.1,max_tokens:200,
+        messages:[
+          {role:"system",content:'你是食物营养数据库。返回JSON格式：{"name":"食物名","unit":"份量描述(含克数)","carb":碳水克数,"protein":蛋白质克数,"fat":脂肪克数,"cal":热量千卡}。只返回JSON，不要其他内容。热量=碳水×4+蛋白×4+脂肪×9验证。'},
+          {role:"user",content:state.aiQuery.trim()}
+        ]})
+    });
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message||"API错误");
+    const txt=d.choices?.[0]?.message?.content||"";
+    const m=txt.match(/\{[\s\S]*\}/);
+    if(!m)throw new Error("AI返回格式异常，请重试");
+    const j=JSON.parse(m[0]);
+    if(j.carb==null||j.protein==null||j.fat==null)throw new Error("数据不完整");
+    const cc=Math.round(j.carb*4+j.protein*4+j.fat*9);
+    S({aiLoading:false,aiResult:{cat:"AI",name:j.name||state.aiQuery,u:j.unit||"份",
+      c:Math.round(j.carb*10)/10,p:Math.round(j.protein*10)/10,f:Math.round(j.fat*10)/10,
+      cal:Math.abs(cc-(j.cal||0))>20?cc:Math.round(j.cal)}});
+  }catch(e){S({aiLoading:false,aiError:e.message||"查询失败"})}
+}
+
+function addAiFood(){
+  if(!state.aiResult)return;
+  state.foods.push(state.aiResult);
+  addFood(state.aiResult);
+  S({aiResult:null,aiQuery:"",showAdd:false});
+}
+
+function addFood(food){
+  const log=state.weekLog;
+  const ex=log[state.selDay].find(m=>m.name===food.name);
+  if(ex)ex.qty+=1;else log[state.selDay].push({...food,qty:1});
+  S({weekLog:log});
+}
+function removeFood(i){state.weekLog[state.selDay].splice(i,1);S({})}
+function changeQty(i,d){
+  const item=state.weekLog[state.selDay][i];
+  item.qty=Math.max(.5,+(item.qty+d).toFixed(1));
+  S({});
+}
+function toggleFast(d){
+  const fd=state.prof.fastDays;
+  if(fd.includes(d))fd.splice(fd.indexOf(d),1);else{fd.push(d);if(fd.length>2)fd.shift()}
+  S({});
+}
+
+// ========== RENDER ==========
+function h(tag,attrs,...kids){
+  const el=document.createElement(tag);
+  if(attrs)Object.entries(attrs).forEach(([k,v])=>{
+    if(k==="style"&&typeof v==="object"){Object.assign(el.style,v)}
+    else if(k.startsWith("on")){el.addEventListener(k.slice(2).toLowerCase(),v)}
+    else if(k==="className"){el.className=v}
+    else{el.setAttribute(k,v)}
+  });
+  kids.flat(9).forEach(c=>{if(c!=null)el.append(typeof c==="string"||typeof c==="number"?document.createTextNode(c):c)});
+  return el;
+}
+
+function render(){
+  const app=document.getElementById("app");
+  app.innerHTML="";
+  if(state.page==="setup")app.append(renderSetup());
+  else app.append(renderTracker());
+}
+
+function renderSetup(){
+  const {lean,rmr,tdee,minCal,cpk}=calc();
+  const p=state.prof;
+
+  return h("div",{style:{paddingTop:16}},
+    // Header
+    h("div",{style:{textAlign:"center",marginBottom:28}},
+      h("div",{style:{fontSize:44}},"🔥"),
+      h("h1",{style:{fontSize:24,fontWeight:800,letterSpacing:"-.5px",marginTop:4}},"5+2 智能减脂"),
+      h("p",{style:{color:"#6b7280",fontSize:13,marginTop:6}},"碳蛋脂配额表 · 间歇断食 · DeepSeek AI")
+    ),
+    // Form
+    h("div",{className:"card",style:{background:"#f8f7ff"}},
+      field("身高 (cm)",p.height,v=>{p.height=+v;S({})}),
+      field("体重 (kg)",p.weight,v=>{p.weight=+v;S({})}),
+      field("体脂率 (%)",p.bodyFat,v=>{p.bodyFat=+v;S({})}),
+      h("div",{style:{marginBottom:14}},
+        h("span",{className:"lbl"},"训练频率"),
+        (()=>{const sel=h("select",{className:"inp",style:{appearance:"none"}});
+          Object.entries(ACT).forEach(([k,[label]])=>{const o=h("option",{value:k},label);if(k===p.activity)o.selected=true;sel.append(o)});
+          sel.addEventListener("change",e=>{p.activity=e.target.value;S({})});return sel})()
+      ),
+      h("div",null,
+        h("span",{className:"lbl"},"选2天断食日（建议训练日疯狂练）"),
+        h("div",{style:{display:"flex",gap:"5px",marginTop:6}},
+          ...DAYS.map((d,i)=>h("button",{style:{flex:1,padding:"7px 0",borderRadius:10,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",
+            background:p.fastDays.includes(i)?"#ef4444":"#e8e6f0",color:p.fastDays.includes(i)?"#fff":"#6b7280"},
+            onClick:()=>toggleFast(i)},d))
+        )
+      ),
+      // API Key
+      h("div",{style:{marginTop:14}},
+        h("span",{className:"lbl"},"DeepSeek API Key（AI食物识别用）"),
+        (()=>{const inp=h("input",{className:"inp",type:"password",placeholder:"sk-...",value:p.apiKey||""});
+          inp.addEventListener("input",e=>{p.apiKey=e.target.value;saveState()});return inp})()
+      )
+    ),
+    // Stats
+    h("div",{className:"card",style:{background:"#f0fdf4"}},
+      h("div",{style:{fontWeight:700,fontSize:14,marginBottom:8,color:"#166534"}},"📊 你的身体数据"),
+      row("瘦体重",lean.toFixed(1)+"kg"),
+      row("RMR",Math.round(rmr)+"kcal","25.2×体重"),
+      row("TDEE",tdee+"kcal","RMR×"+ACT[p.activity][1]),
+      row("最低保护线",minCal+"kcal","瘦体重×30"),
+      h("div",{style:{marginTop:8,borderTop:"1px dashed #bbf7d0",paddingTop:8}},
+        row("碳水("+p.height+"cm/"+p.weight+"kg查表)",cpk+"g/kg → "+Math.round(p.weight*cpk)+"g"),
+        row("蛋白质","1.8g/kg → "+Math.round(p.weight*1.8)+"g"),
+        row("脂肪","0.5g/kg → "+Math.round(p.weight*.5)+"g")
+      ),
+      h("div",{style:{marginTop:8,fontSize:11,color:"#166534",background:"#dcfce7",borderRadius:8,padding:"6px 10px"}},
+        "正常日 = "+Math.round(p.weight*cpk*4+p.weight*1.8*4+p.weight*.5*9)+"kcal · 断食日 = 900kcal")
+    ),
+    // Principles
+    h("div",{className:"card",style:{background:"#fef3c7",marginBottom:18}},
+      h("div",{style:{fontWeight:700,fontSize:13,marginBottom:6,color:"#92400e"}},"💡 5+2 原理"),
+      tip("5天正常日：碳水"+cpk+"g/kg 蛋白1.8g/kg 脂肪0.5g/kg"),
+      tip("2天断食日：仅900kcal，蛋白1.6g/kg+蔬菜(镁钾)"),
+      tip("正常日≥TDEE("+tdee+")，欺骗瘦素维持代谢"),
+      tip("断食日疯狂练 · 黑咖啡 · 肉扛饿 · 蔬菜增胃张力"),
+      tip("不能长期低于"+minCal+"kcal（瘦体重×30）")
+    ),
+    h("button",{className:"btn-primary",onClick:()=>S({page:"track"})},"开始我的5+2计划 →")
+  );
+}
+
+function renderTracker(){
+  const {isFast,targets,actual,cpk,tdee}=calc();
+  const p=state.prof;
+  const rem={cal:targets.cal-actual.cal,c:targets.c-actual.c,p:targets.p-actual.p};
+
+  const root=h("div",null,
+    // Week bar
+    h("div",{style:{display:"flex",gap:"3px",marginBottom:14}},
+      ...DAYS.map((d,i)=>{
+        const fast=p.fastDays.includes(i),act=i===state.selDay;
+        return h("button",{className:"week-btn"+(act?" active":""),
+          style:{background:act?(fast?"#fef2f2":"#eef2ff"):fast?"#fff5f5":"#f9fafb",
+            color:act?(fast?"#dc2626":"#6366f1"):"#9ca3af",borderColor:act?"#6366f1":"transparent"},
+          onClick:()=>S({selDay:i})},
+          h("div",null,d),h("div",{style:{fontSize:8,marginTop:1}},fast?"🔥断食":"🍚正常"))
+      })
+    ),
+    // Status
+    h("div",{className:"fade-in",style:{background:isFast?"linear-gradient(135deg,#fef2f2,#fee2e2)":"linear-gradient(135deg,#eef2ff,#e0e7ff)",borderRadius:18,padding:18,marginBottom:14}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},
+        h("div",null,
+          h("div",{style:{fontSize:18,fontWeight:800}},DAYS[state.selDay]+" · "+targets.type),
+          h("div",{style:{fontSize:11,color:"#6b7280",marginTop:2}},isFast?"蛋白+蔬菜(镁) · 黑咖啡 · 疯狂练":"碳水"+cpk+"g/kg · 蛋白1.8 · 脂肪0.5")
+        ),
+        h("div",{style:{textAlign:"right"}},
+          h("div",{style:{fontSize:26,fontWeight:900,color:actual.cal>targets.cal*1.05?"#dc2626":"#1e1b4b"}},Math.round(actual.cal)),
+          h("div",{style:{fontSize:10,color:"#6b7280"}},"/ "+targets.cal+" kcal"))
+      ),
+      bar("热量",actual.cal,targets.cal,"#6366f1","kcal"),
+      bar("碳水",actual.c,targets.c,"#f59e0b","g"),
+      bar("蛋白",actual.p,targets.p,"#ef4444","g"),
+      bar("脂肪",actual.f,targets.f,"#10b981","g")
+    ),
+    // Tips
+    isFast?h("div",{style:{background:"#fef3c7",borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#92400e",lineHeight:1.6}},
+      h("b",null,"🔥断食日")," 蛋白目标"+targets.p+"g(1.6×"+p.weight+"kg) · 菠菜补钾镁 · 黑咖啡 · 疯狂练！"):null,
+    !isFast&&actual.cal>0&&rem.cal>100?h("div",{style:{background:"#dbeafe",borderRadius:12,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#1e40af",lineHeight:1.6}},
+      h("b",null,"📢")," 还差",h("b",null,Math.round(rem.cal)+"kcal")," · 碳水还需",h("b",null,Math.max(0,Math.round(rem.c))+"g")," · 蛋白还需",h("b",null,Math.max(0,Math.round(rem.p))+"g")," · 正常日吃够！"):null,
+    // Meal log
+    h("div",{style:{marginBottom:14}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+        h("div",{style:{fontSize:15,fontWeight:700}},"饮食记录"),
+        h("button",{style:{padding:"5px 14px",borderRadius:10,border:"none",background:"#6366f1",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"},
+          onClick:()=>S({showAdd:true,aiResult:null,aiError:"",aiQuery:""})},"+ 添加")
+      ),
+      state.weekLog[state.selDay].length===0?
+        h("div",{style:{textAlign:"center",padding:28,color:"#9ca3af",fontSize:13,background:"#f9fafb",borderRadius:12}},"点击添加开始记录 "+(isFast?"🥗":"🍱")):null,
+      ...state.weekLog[state.selDay].map((m,i)=>
+        h("div",{style:{display:"flex",alignItems:"center",padding:"10px 12px",background:"#fff",borderRadius:11,marginBottom:5,border:"1px solid #f0f0f0"}},
+          h("div",{style:{flex:1}},
+            h("div",{style:{fontWeight:600,fontSize:13}},m.name," ",h("span",{style:{color:"#a5b4fc",fontWeight:400}},"×"+m.qty),
+              m.cat==="AI"?h("span",{style:{fontSize:9,background:"#ede9fe",color:"#6366f1",padding:"1px 5px",borderRadius:4,marginLeft:4}},"AI"):null),
+            h("div",{style:{fontSize:10,color:"#6b7280",marginTop:1}},
+              h("b",null,Math.round(m.cal*m.qty)+"kcal")," · 碳"+Math.round(m.c*m.qty)+"g · 蛋"+Math.round(m.p*m.qty)+"g · 脂"+Math.round(m.f*m.qty)+"g")
+          ),
+          h("div",{style:{display:"flex",gap:"3px",alignItems:"center"}},
+            h("button",{className:"qty-btn",style:{background:"#f3f4f6",color:"#374151"},onClick:()=>changeQty(i,-.5)},"−"),
+            h("span",{style:{fontSize:12,fontWeight:600,minWidth:20,textAlign:"center"}},m.qty),
+            h("button",{className:"qty-btn",style:{background:"#f3f4f6",color:"#374151"},onClick:()=>changeQty(i,.5)},"+"),
+            h("button",{className:"qty-btn",style:{background:"#fee2e2",color:"#dc2626"},onClick:()=>removeFood(i)},"×")
+          )
+        )
+      )
+    ),
+    // Week overview
+    h("div",{className:"card",style:{background:"#f8f7ff"}},
+      h("div",{style:{fontWeight:700,fontSize:14,marginBottom:8}},"📊 本周总览"),
+      h("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"3px",textAlign:"center"}},
+        ...DAYS.map((d,i)=>{
+          const meals=state.weekLog[i]||[];
+          const tot=meals.reduce((s,m)=>s+m.cal*m.qty,0);
+          const fast=p.fastDays.includes(i);
+          return h("div",{style:{padding:6,borderRadius:9,cursor:"pointer",background:i===state.selDay?"#e0e7ff":"#fff",border:"1px solid #f0f0f0"},onClick:()=>S({selDay:i})},
+            h("div",{style:{fontSize:9,color:"#6b7280"}},d),
+            h("div",{style:{fontSize:7,color:fast?"#dc2626":"#6366f1",fontWeight:700}},fast?"断":"正"),
+            tot>0?h("div",{style:{fontSize:10,fontWeight:700,color:tot>(fast?900:targets.cal)*1.05?"#dc2626":"#059669",marginTop:1}},Math.round(tot)):
+              h("div",{style:{fontSize:10,color:"#d1d5db",marginTop:1}},"-"))
+        })
+      )
+    ),
+    // Bottom nav
+    h("div",{className:"bottom-bar"},
+      h("button",{style:{padding:"7px 20px",borderRadius:10,border:"none",background:"#f3f4f6",color:"#6b7280",fontSize:12,fontWeight:600,cursor:"pointer"},onClick:()=>S({page:"setup"})},"⚙ 设置"),
+      h("button",{style:{padding:"7px 28px",borderRadius:10,border:"none",background:"#6366f1",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"},
+        onClick:()=>S({showAdd:true,aiResult:null,aiError:"",aiQuery:""})},"+ 记录饮食")
+    )
+  );
+
+  // Modal
+  if(state.showAdd){
+    const modal=h("div",{className:"modal-bg",onClick:()=>S({showAdd:false,q:"",catFilter:"全部",aiResult:null,aiError:""})},
+      h("div",{className:"modal-sheet",onClick:e=>e.stopPropagation()},
+        h("div",{style:{fontWeight:800,fontSize:17,marginBottom:10}},isFast?"🥗 断食日食物":"🍱 选择食物"),
+        // AI section
+        h("div",{style:{background:"linear-gradient(135deg,#eff6ff,#ede9fe)",borderRadius:12,padding:14,marginBottom:12}},
+          h("div",{style:{fontSize:13,fontWeight:700,marginBottom:4}},"🤖 AI识别食物"),
+          h("div",{style:{fontSize:11,color:"#6b7280",marginBottom:8}},"找不到？输入食物名让DeepSeek查"),
+          h("div",{style:{display:"flex",gap:"6px"}},
+            (()=>{const inp=h("input",{style:{flex:1,padding:"9px",borderRadius:9,border:"1px solid #c7d2fe",fontSize:13},placeholder:"如：麻辣烫、星巴克拿铁...",value:state.aiQuery});
+              inp.addEventListener("input",e=>{state.aiQuery=e.target.value});
+              inp.addEventListener("keydown",e=>{if(e.key==="Enter")askAI()});return inp})(),
+            h("button",{style:{padding:"9px 16px",borderRadius:9,border:"none",fontSize:12,fontWeight:700,cursor:"pointer",
+              background:state.aiLoading?"#c7d2fe":"#6366f1",color:"#fff",whiteSpace:"nowrap"},
+              onClick:askAI},state.aiLoading?"查询中...":"AI查询")
+          ),
+          state.aiError?h("div",{style:{marginTop:6,fontSize:11,color:"#dc2626",background:"#fef2f2",borderRadius:6,padding:"4px 8px"}},state.aiError):null,
+          state.aiResult?h("div",{className:"fade-in",style:{marginTop:10,background:"#fff",borderRadius:10,padding:12,border:"1px solid #e0e7ff"}},
+            h("div",{style:{fontSize:14,fontWeight:700,marginBottom:4}},state.aiResult.name," ",h("span",{style:{fontSize:11,color:"#6b7280",fontWeight:400}},state.aiResult.u)),
+            h("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"6px",marginBottom:10}},
+              macroTag("热量",state.aiResult.cal+"kcal","#6366f1"),
+              macroTag("碳水",state.aiResult.c+"g","#f59e0b"),
+              macroTag("蛋白",state.aiResult.p+"g","#ef4444"),
+              macroTag("脂肪",state.aiResult.f+"g","#10b981")
+            ),
+            h("button",{style:{width:"100%",padding:10,borderRadius:10,border:"none",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"},onClick:addAiFood},"✅ 确认添加")
+          ):null
+        ),
+        // Search
+        (()=>{const inp=h("input",{className:"inp",style:{marginBottom:8},placeholder:"搜索食物库...",value:state.q});
+          inp.addEventListener("input",e=>{state.q=e.target.value;render()});return inp})(),
+        // Category filter
+        h("div",{style:{display:"flex",gap:"4px",marginBottom:10,flexWrap:"wrap"}},
+          ...CATS.map(c=>h("button",{className:"cat-btn",style:{background:state.catFilter===c?"#6366f1":"#f3f4f6",color:state.catFilter===c?"#fff":"#6b7280"},
+            onClick:()=>{state.catFilter=c;render()}},c))
+        ),
+        // Food list
+        h("div",{style:{flex:1,overflow:"auto",minHeight:0}},
+          ...state.foods.filter(f=>(state.catFilter==="全部"||f.cat===state.catFilter)&&(!state.q||f.name.toLowerCase().includes(state.q.toLowerCase())))
+            .map(f=>{
+              const rec=isFast&&(f.p>10||f.c<5);
+              const isAi=f.cat==="AI";
+              return h("div",{className:"food-item",style:{background:rec?"#f0fdf4":isAi?"#faf5ff":"transparent",borderLeft:rec?"3px solid #22c55e":isAi?"3px solid #8b5cf6":"3px solid transparent"},
+                onClick:()=>{addFood(f);S({showAdd:false,q:"",catFilter:"全部"})}},
+                h("div",{style:{flex:1}},
+                  h("div",{style:{fontWeight:600,fontSize:13}},f.name," ",h("span",{style:{color:"#9ca3af",fontWeight:400,fontSize:11}},f.u),
+                    rec?h("span",{style:{fontSize:9,background:"#dcfce7",color:"#166534",padding:"1px 5px",borderRadius:4,marginLeft:4}},"断食推荐"):null,
+                    isAi?h("span",{style:{fontSize:9,background:"#ede9fe",color:"#6366f1",padding:"1px 5px",borderRadius:4,marginLeft:4}},"AI"):null),
+                  h("div",{style:{fontSize:10,color:"#6b7280",marginTop:1}},h("b",null,f.cal+"kcal")," · 碳"+f.c+"g · 蛋"+f.p+"g · 脂"+f.f+"g")
+                ),
+                h("div",{style:{fontSize:18,color:"#6366f1",fontWeight:700}},"+")
+              )
+            })
+        )
+      )
+    );
+    root.append(modal);
+  }
+  return root;
+}
+
+// ========== HELPERS ==========
+function field(label,value,onChange){
+  const wrap=h("label",{style:{display:"block",marginBottom:14}},h("span",{className:"lbl"},label));
+  const inp=h("input",{className:"inp",type:"number",value:value});
+  inp.addEventListener("input",e=>onChange(e.target.value));
+  wrap.append(inp);return wrap;
+}
+function row(l,v,sub){
+  return h("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,lineHeight:"1.8"}},
+    h("span",{style:{color:"#374151"}},l),
+    h("span",null,h("b",null,v),sub?h("span",{style:{color:"#9ca3af",marginLeft:"4px",fontSize:10}},"("+sub+")"):null))
+}
+function tip(text){return h("div",{className:"tip"},"• "+text)}
+function bar(label,cur,max,color,unit){
+  const pct=Math.min(100,Math.round(cur/Math.max(max,1)*100));
+  const over=cur>max*1.05;
+  return h("div",{style:{marginBottom:8}},
+    h("div",{style:{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}},
+      h("span",{style:{fontWeight:700}},label),
+      h("span",{style:{color:over?"#dc2626":"#6b7280"}},Math.round(cur)+"/"+max+unit+(over?" ⚠超标":""))),
+    h("div",{className:"bar-track"},h("div",{className:"bar-fill",style:{width:pct+"%",background:over?"#dc2626":color}})))
+}
+function macroTag(label,value,color){
+  return h("div",{className:"macro-tag",style:{background:color+"11"}},
+    h("div",{className:"l"},label),h("div",{className:"v",style:{color}},value))
+}
+
+// ========== INIT ==========
+render();
+</script>
+</body>
+</html>
