@@ -133,8 +133,8 @@ let S=load()||{
 
 function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function dateToWeekday(ds){const d=new Date(ds);const wd=d.getDay();return wd===0?6:wd-1}
-function load(){try{const s=localStorage.getItem("d52v4");return s?JSON.parse(s):null}catch(e){return null}}
-function save(){try{const s={...S,showAdd:false,showCustom:false,showBody:false,aiL:false,aiR:null,aiE:""};localStorage.setItem("d52v4",JSON.stringify(s))}catch(e){}}
+function load(){try{const s=localStorage.getItem("d52v5");return s?JSON.parse(s):null}catch(e){return null}}
+function save(){try{const s={...S,showAdd:false,showCustom:false,showBody:false,aiL:false,aiR:null,aiE:""};localStorage.setItem("d52v5",JSON.stringify(s))}catch(e){}}
 function U(u){Object.assign(S,u);render();save()}
 
 // ===== CALC =====
