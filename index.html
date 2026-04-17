@@ -116,20 +116,49 @@ const ACT={sedentary:["久坐(×1.2)",1.2],split3:["三分化(×1.3)",1.3],freq5
 const CATS=["全部","主食","蛋白质","蔬菜","水果","油脂","饮品","补剂","自定义","AI"];
 
 // ===== STATE =====
-let S=load()||{
-  page:"setup",tab:"diet",
-  prof:{weight:90,height:180,bodyFat:20,activity:"split3",fastDays:[5,6],apiKey:""},
-  foods:JSON.parse(JSON.stringify(INIT_FOODS)),
-  // key: "2026-04-15", value: [{name,grams,c,p,f,cal,cat}]
-  dailyLog:{},
-  // body measurements: [{date:"2026-04-15",weight:90,bodyFat:20,waist:85,arm:35}]
-  bodyLog:[],
-  selDate:todayStr(),
-  showAdd:false,showCustom:false,showBody:false,
-  q:"",catF:"全部",
-  aiQ:"",aiL:false,aiR:null,aiE:"",
-  addGrams:100,
-};
+// 【关键】每次修改INIT_FOODS后，把这个版本号+1（比如从1改成2）
+const CURRENT_DATA_VERSION = 2; 
+
+let S = load() || initNewState();
+
+// 如果检测到旧版本，自动迁移数据（保留用户记录，只更新食物库）
+if (S.dataVersion && S.dataVersion < CURRENT_DATA_VERSION) {
+  S = migrateData(S);
+  save();
+}
+
+function initNewState() {
+  return {
+    dataVersion: CURRENT_DATA_VERSION, // 给数据加版本号
+    page:"setup",tab:"diet",
+    prof:{weight:90,height:180,bodyFat:20,activity:"split3",fastDays:[5,6],apiKey:""},
+    foods:JSON.parse(JSON.stringify(INIT_FOODS)),
+    dailyLog:{},
+    bodyLog:[],
+    selDate:todayStr(),
+    showAdd:false,showCustom:false,showBody:false,
+    q:"",catF:"全部",
+    aiQ:"",aiL:false,aiR:null,aiE:"",
+    addGrams:100,
+  };
+}
+
+// 数据迁移逻辑：保留用户数据，替换食物库
+function migrateData(oldState) {
+  return {
+    ...initNewState(), // 用新的初始化数据（包含新食物库）
+    // 【保留】你的个人设置
+    prof: oldState.prof,
+    // 【保留】你的每日饮食记录
+    dailyLog: oldState.dailyLog,
+    // 【保留】你的体围记录
+    bodyLog: oldState.bodyLog,
+    // 【保留】其他你想保留的状态
+    selDate: oldState.selDate,
+    page: oldState.page,
+    tab: oldState.tab,
+  };
+}
 
 function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function dateToWeekday(ds){const d=new Date(ds);const wd=d.getDay();return wd===0?6:wd-1}
